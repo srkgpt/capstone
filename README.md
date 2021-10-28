@@ -1,4 +1,4 @@
-# Capstone
+# **Capstone**
 ### Overview: 
 
 The Data Quality Solution provides an industry-developed best practices guide for the improvement of data quality and allows companies to better leverage their data quality programmes and to ensure a continuously improving cycle for the generation of master data. It details the crucial processes and capabilities that help organisations improve their data quality and maintain a sustainable good quality data output. 
