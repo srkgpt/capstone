@@ -17,6 +17,22 @@ from pyspark.sql.types import StructType,StructField, StringType, FloatType
 
 # COMMAND ----------
 
+# DBTITLE 1,ErrorLog Function
+def ErrorLog(errorMsg):
+    dict = [{'Error Message': errorMsg}]
+    dfEMessage = spark.createDataFrame(dict)
+    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') 
+    dfNewErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
+    dfErrorLog=spark.read.format("csv").option("header","True").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog")
+    dfErrorLog.show()
+    dfErrorLog=dfErrorLog.union(dfNewErrorLog)
+    dfErrorLog.show()
+    dfErrorLog.coalesce(1).write.option("Header","True").save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",
+                                         format="csv",mode="overwrite") 
+  
+
+# COMMAND ----------
+
 # DBTITLE 1,Extract Data from Storage Account
 storage="capstonebrillio"
 container="capstonedata"
@@ -180,9 +196,9 @@ dfnullAthletes.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net
 
 # COMMAND ----------
 
-# DBTITLE 1,logging errors into errorLog file in storage account
+# DBTITLE 1,Write the rows with Nulls into storage
 try:
-    dfnullTeams.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/nullofteam/"+day)
+    dfnullAthletes.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthletesNull/"+day)
 except Exception as e:
     print(e)
     errorMsg = str(e)
@@ -191,51 +207,80 @@ except Exception as e:
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') 
     dfErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
     #dfErrorLog.show(truncate = False)
-    dfErrorLog.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/errorLog") 
+    dfErrorLog.write.save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",format='csv',mode='append',sep='\t') 
+    #dfErrorLog1=dfErrorLog.union(dfErrorLog).show()
+
+# COMMAND ----------
+
+# DBTITLE 1,logging errors into errorLog file in storage account for teams
+try:
+    dfnullTeams.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsNull/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    dict = [{'Error Message': errorMsg}]
+    dfEMessage = spark.createDataFrame(dict)
+    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') 
+    dfNewErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
+    #dfErrorLog.show(truncate = False)
+    dfErrorLog=spark.read.format("csv").option("header","True").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog")
+    dfErrorLog.show()
+    dfErrorLog=dfErrorLog.union(dfNewErrorLog)
+    dfErrorLog.show()
+    dfErrorLog.coalesce(1).write.save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",
+                                         format="csv",mode="overwrite") 
     #dfErrorLog1=dfErrorLog.union(dfErrorLog).show()
     
 
 # COMMAND ----------
 
-# DBTITLE 1,Write the rows with Nulls into Storage
-dfnullmedal.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/nullofmedal/"+day)
+# DBTITLE 1,Write the rows with Nulls into Storage for medals
+try:
+    dfnullMedals.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/MeadalsNull/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
+    
+
 
 # COMMAND ----------
 
-# DBTITLE 1,Write the rows with Blanks into Storage
-dfMedalsblank.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/blankofmedal/"+day)
+# DBTITLE 1,Write the rows with Blanks into Storage for medals
+dfMedalsblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/MedalsBlank/"+day)
 
 # COMMAND ----------
 
-# DBTITLE 1,Write the rows with Blanks into Storage
-dfAthletesblank.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/blankofathlete:"+day)
+# DBTITLE 1,Write the rows with Blanks into Storage for athletes
+dfAthletesblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthletesBlank/"+day)
 
 # COMMAND ----------
 
-# DBTITLE 1,Write the rows with Blanks into Storage
-dfTeamsblank.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/blankofteam:"+day)
+# DBTITLE 1,Write the rows with Blanks into Storage for teams
+dfTeamsblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsBlank/"+day)
 
 # COMMAND ----------
 
-# DBTITLE 1,Getting Athlete data without errors(currently only null)
-dfAthletesNew=dfAthletes.subtract(dfnullathlete)#give union of all error data inside subtract
+# DBTITLE 1,Getting Athlete data without errors(currently only null and blank)
+dfAthletesNew=dfAthletes.subtract(dfnullAthletes.union(dfAthletesblank))#give union of all error data inside subtract
 dfAthletesNew.show()
 
 # COMMAND ----------
 
-# DBTITLE 1,Getting Medal data without errors(currently only null)
-dfMedalsNew=dfMedals.subtract(dfnullmedal)#give union of all error data inside subtract 
+# DBTITLE 1,Getting Medal data without errors(currently only null and blank)
+dfMedalsNew=dfMedals.subtract(dfnullMedals.union(dfMedalsblank))#give union of all error data inside subtract 
 dfMedalsNew.show()
 
 # COMMAND ----------
 
-# DBTITLE 1,Getting Team data without errors(currently only null)
-dfTeamsNew=dfTeams.subtract(dfnullteam)#give union of all error data inside subtract
+# DBTITLE 1,Getting Team data without errors(currently only null and blank)
+dfTeamsNew=dfTeams.subtract(dfnullTeams.union(dfTeamsblank))#give union of all error data inside subtract
 dfTeamsNew.show()
 
 # COMMAND ----------
 
-# DBTITLE 1,Creation of Consolidated Dataframe for storing results of all the checks
+# DBTITLE 1,Initializing Error Dataframe
 emptyRDD = spark.sparkContext.emptyRDD()
 schema = StructType([
   StructField('TableName', StringType(), True),
@@ -247,15 +292,16 @@ dfError=spark.createDataFrame(emptyRDD,schema)
 # COMMAND ----------
 
 # DBTITLE 1,Putting the Percentage of the Null Errors in a Dataframe
-nullschema=StructType([
+errorschema=StructType([
     StructField('TableName',StringType(),True),
-    StructField('NullErrorPercentage',FloatType(),True)
+    StructField('ErrorPercentage',FloatType(),True),
+    StructField('TypeofError',StringType(),True)
 ])
-dfNullErrorPer=spark.createDataFrame([('Athletes',round(dfnullathlete.count()/dfAthletes.count()*100,3)),('Medals',round(dfnullmedal.count()/dfMedals.count()*100,3)),('Teams',round(dfnullteam.count()/dfTeams.count()*100,3))],nullschema)
+dfErrorPer=spark.createDataFrame([('Athletes',round((dfnullAthletes.count()/dfAthletes.count())*100,3),'Null Error'),('Medals',round((dfnullMedals.count()/dfMedals.count())*100,3),'Null Error'),('Teams',round((dfnullTeams.count()/dfTeams.count())*100,3),'NullError'),('Athletes',round((dfAthletesblank.count()/dfAthletes.count())*100,3),'Blank Error'),('Medals',round((dfMedalsblank.count()/dfMedals.count())*100,3),'Blank Error'),('Teams',round((dfMedalsblank.count()/dfMedals.count())*100,3),'Blank Error')],errorschema)
 
 # COMMAND ----------
 
-dfNullErrorPer.show()
+dfErrorPer.show()
 
 # COMMAND ----------
 
@@ -284,7 +330,7 @@ except Exception as e:
 
 # COMMAND ----------
 
-dfAthletesDuplicate.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/AthleteDuplicate:"+day)
+dfAthletesDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthleteDuplicate/"+day)
 
 # COMMAND ----------
 
@@ -309,7 +355,7 @@ dfMedalsDuplicate.show()
 
 # COMMAND ----------
 
-dfMedalsDuplicate.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/MedalsDuplicate:"+day)
+dfMedalsDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/MedalsDuplicate/"+day)
 
 # COMMAND ----------
 
@@ -330,46 +376,21 @@ dfTeamsDuplicate = dfTeamsDupIndicator.filter("Duplicate_indicator > 0").distinc
 
 # COMMAND ----------
 
-dfTeamsDuplicate.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/TeamsDuplicate:"+day)
+dfTeamsDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsDuplicate/"+day)
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
-dfa=dfAthletes.withColumn("rowId", monotonically_increasing_id())
-
-# COMMAND ----------
-
-# DBTITLE 1,Validity checks- needs to be checked
-dfAthletesAlnum=dfa.select(reduce(lambda x, y: x | y, (f.col(x).cast("int").isNotNull() for x in dfAthletes.columns)).alias("al"))
-
-
-# COMMAND ----------
-
+# DBTITLE 1,Validity checks
+dfAthletesAlnum=dfAthletes.withColumn("al",reduce(lambda x, y: x | y, (f.col(x).cast("int").isNotNull() for x in dfAthletes.columns)))
 dfAthletesAlnum.show()
 
 # COMMAND ----------
 
-from pyspark.sql.functions import monotonically_increasing_id
-
-dfb=dfAthletesAlnum.withColumn("rowId", monotonically_increasing_id())
-
-dfAthletesValidity=dfa.join(dfb,("rowId")).drop("rowId")
+dfAthletesAlnum.filter(f.col("al")==True).show()
 
 # COMMAND ----------
 
-dfAthletesValidity.show(50)
-
-# COMMAND ----------
-
-dfAthletesValidity.filter(f.col("Name")=="ABDI Bashir").show()
-
-# COMMAND ----------
-
-import pyspark.sql.functions as f
-dfAthletesValidity = dfAthletesValidity.filter(f.col("al") == True)
+dfAthletesValidity=dfAthletesValidity.where("al")
 
 # COMMAND ----------
 
@@ -377,20 +398,11 @@ dfAthletesValidity.show()
 
 # COMMAND ----------
 
-dfMedalsAlnum=dfMedalsTrim.select("Team/NOC", f.col("Team/NOC").cast("int").isNotNull().alias("check"))
+dfMedalsAlnum=dfMedals.withColumn("al", f.col("Team/NOC").cast("int").isNotNull())
 
 # COMMAND ----------
 
-from pyspark.sql.functions import monotonically_increasing_id
-dfa=dfMedals.withColumn("rowId", monotonically_increasing_id())
-dfb=dfMedalsAlnum.withColumn("rowId", monotonically_increasing_id())
-
-dfMedalsValidity=dfa.join(dfb,("rowId")).drop("rowId")
-
-# COMMAND ----------
-
-import pyspark.sql.functions as f
-dfMedalsValidity = dfMedalsValidity.filter(f.col("check") ==True).drop("check") 
+dfMedalsValidity = dfMedalsAlnum.filter("al") 
 
 # COMMAND ----------
 
@@ -398,21 +410,12 @@ dfMedalsValidity.show()
 
 # COMMAND ----------
 
-dfTeamsAlnum=dfTeamsTrim.select(reduce(lambda x, y: x | y, (f.col(x).cast("int").isNotNull() for x in dfAthlete.columns)).alias("alnum"))
+dfTeamsAlnum=dfTeams.withColumn("al",reduce(lambda x, y: x | y, (f.col(x).cast("int").isNotNull() for x in dfTeams.columns)))
 
 
 # COMMAND ----------
 
-from pyspark.sql.functions import monotonically_increasing_id
-dfa=dfTeams.withColumn("rowId", monotonically_increasing_id())
-dfb=dfTeamsAlnum.withColumn("rowId", monotonically_increasing_id())
-
-dfTeamsValidity=dfa.join(dfb,("rowId")).drop("rowId")
-
-# COMMAND ----------
-
-import pyspark.sql.functions as f
-dfTeamsValidity = dfTeamsValidity.filter(f.col("alnum") ==True).drop("alnum") #!!! 
+dfTeamsValidity = dfTeamsAlnum.where("al")
 
 # COMMAND ----------
 
@@ -437,7 +440,7 @@ dfAcNCFmedals.show()
 # COMMAND ----------
 
 # DBTITLE 1,Write the rows with number check failure to Storage
-dfAcNCFmedals.write.csv("abfss://capstonedata@capstonebrillio.dfs.core.windows.net/AcNCFmedals:"+day)
+dfAcNCFmedals.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AcNCFmedals/"+day)
 
 # COMMAND ----------
 
