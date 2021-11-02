@@ -13,7 +13,23 @@ from pyspark.sql.types import StructType,StructField, StringType, FloatType
 # COMMAND ----------
 
 # DBTITLE 1,Widget Creation
-
+dbutils.widgets.removeAll()
+dbutils.widgets.text("storage","storage name")
+dbutils.widgets.text("container","container name")
+dbutils.widgets.text("clientid","client_id")
+dbutils.widgets.text("secret","secret key")
+dbutils.widgets.text("tenantid","tenant_id")
+storage = dbutils.widgets.get("storage")
+print(storage)
+container = dbutils.widgets.get("container")
+print(container)
+clientid = dbutils.widgets.get("clientid")
+print(clientid)
+secret = dbutils.widgets.get("secret")
+print(secret)
+tenantid = dbutils.widgets.get("tenantid")
+print(tenantid)
+#dbutils.widgets.removeAll()
 
 # COMMAND ----------
 
@@ -50,7 +66,12 @@ spark.conf.set("fs.azure.account.oauth2.client.endpoint."+storage+".dfs.core.win
 # COMMAND ----------
 
 # DBTITLE 1,Load Athletes
-dfAthletes = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/Athletes.csv")
+try:
+    dfAthletes = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/Athletes.csv")
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -61,7 +82,12 @@ dfAthletes.show()
 # COMMAND ----------
 
 # DBTITLE 1,Load Medals
-dfMedals = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/Medals.csv")
+try:
+    dfMedals = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/Medals.csv")
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -70,7 +96,12 @@ dfMedals.show()
 # COMMAND ----------
 
 # DBTITLE 1,Load Teams
-dfTeams = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/Teams.csv")
+try:
+    dfTeams = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/Teams.csv") 
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -83,6 +114,7 @@ dfTeams.show()
 for x in dfMedals.columns:
     if "_c" in x:
         dfMedals=dfMedals.drop(x)
+        
 #fixneeded
 
 # COMMAND ----------
@@ -92,22 +124,40 @@ dfMedals.show()
 # COMMAND ----------
 
 # DBTITLE 1,Get rows from Medals which have atleast one null value in it
-dfnullmedal=dfMedals.where(reduce(lambda x, y: x | y, (f.col(x).isNull() | (f.col(x)=="null") for x in dfMedals.columns)))
-# Reduce-> implementing function across a sequence and in this case funct would be returning true if any of the value in the sequence is true which means atleast one of the column value is null
-dfnullmedal.show()
+try:
+    dfnullmedal=dfMedals.where(reduce(lambda x, y: x | y, (f.col(x).isNull() | (f.col(x)=="null") for x in dfMedals.columns)))
+    # Reduce-> implementing function across a sequence and in this case funct would be returning true if any of the value in the sequence is true which means atleast one of the column value is null
+    dfnullmedal.show()
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
 # DBTITLE 1,Getting blank rows from Medals and replacing with NA
-dfMedalsblank=dfMedals.where(reduce(lambda x, y: x | y, (f.col(x).isNull() for x in dfMedals.columns)))
-dfMedalsblank.na.fill(value="NA").show()
+try:
+    dfMedalsblank=dfMedals.where(reduce(lambda x, y: x | y, (f.col(x).isNull() for x in dfMedals.columns)))
+    dfMedalsblank.na.fill(value="NA").show()
+    
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 
 # COMMAND ----------
 
 # DBTITLE 1,getting rows from Medals with string null
-dfnullMedals=dfMedals.where(reduce(lambda x, y: x | y, (f.col(x)=="null" for x in dfMedals.columns)))
-dfnullMedals.show()
+try:
+    dfnullMedals=dfMedals.where(reduce(lambda x, y: x | y, (f.col(x)=="null" for x in dfMedals.columns)))
+    dfnullMedals.show()
+    
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
 
 # COMMAND ----------
 
@@ -119,21 +169,31 @@ dfnullMedals.show()
 # COMMAND ----------
 
 # DBTITLE 1,Getting blank rows from the Athletes and replacing with NA
-dfAthletesblank=dfAthletes.where(reduce(lambda x, y: x | y, (f.col(x).isNull() for x in dfAthletes.columns)))
-dfAthletesblank.na.fill(value="NA").show()
+try:
+    dfAthletesblank=dfAthletes.where(reduce(lambda x, y: x | y, (f.col(x).isNull() for x in dfAthletes.columns)))
+    dfAthletesblank.na.fill(value="NA").show()
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
 # DBTITLE 1,getting rows from Athletes with string null 
-dfnullAthletes=dfAthletes.where(reduce(lambda x, y: x | y, (f.col(x)=="null" for x in dfAthletes.columns)))
-dfnullAthletes.show()
+try:
+    dfnullAthletes=dfAthletes.where(reduce(lambda x, y: x | y, (f.col(x)=="null" for x in dfAthletes.columns)))
+    dfnullAthletes.show()
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
 # DBTITLE 1,Remove Columns in Teams without headers
 for x in dfTeams.columns:
     if "_c" in x:
-        dfTeams=dfTeams.drop(x)
+        dfTeams=dfTeams.drop(x)        
 dfTeams.show()
 
 # COMMAND ----------
@@ -192,7 +252,12 @@ print(day)
 
 # DBTITLE 1,Write the rows with Nulls into Storage
 dfnullAthletes.show()
-dfnullAthletes.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/nullofathlete/"+day)
+try:
+    dfnullAthletes.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/nullofathlete/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -218,18 +283,7 @@ try:
 except Exception as e:
     print(e)
     errorMsg = str(e)
-    dict = [{'Error Message': errorMsg}]
-    dfEMessage = spark.createDataFrame(dict)
-    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') 
-    dfNewErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
-    #dfErrorLog.show(truncate = False)
-    dfErrorLog=spark.read.format("csv").option("header","True").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog")
-    dfErrorLog.show()
-    dfErrorLog=dfErrorLog.union(dfNewErrorLog)
-    dfErrorLog.show()
-    dfErrorLog.coalesce(1).write.save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",
-                                         format="csv",mode="overwrite") 
-    #dfErrorLog1=dfErrorLog.union(dfErrorLog).show()
+    ErrorLog(errorMsg)
     
 
 # COMMAND ----------
@@ -240,7 +294,13 @@ try:
 except Exception as e:
     print(e)
     errorMsg = str(e)
-    ErrorLog(errorMsg)
+    dict = [{'Error Message': errorMsg}]
+    dfEMessage = spark.createDataFrame(dict)
+    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') 
+    dfErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
+    #dfErrorLog.show(truncate = False)
+    dfErrorLog.write.save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",format='csv',mode='append',sep='\t') 
+    #dfErrorLog1=dfErrorLog.union(dfErrorLog).show()
     
     
 
@@ -248,35 +308,34 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,Write the rows with Blanks into Storage for medals
-dfMedalsblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/MedalsBlank/"+day)
+try:
+    dfMedalsblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/MedalsBlank/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
 
 # COMMAND ----------
 
 # DBTITLE 1,Write the rows with Blanks into Storage for athletes
-dfAthletesblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthletesBlank/"+day)
+try:
+    dfAthletesblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthletesBlank/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
 
 # COMMAND ----------
 
 # DBTITLE 1,Write the rows with Blanks into Storage for teams
-dfTeamsblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsBlank/"+day)
-
-# COMMAND ----------
-
-# DBTITLE 1,Getting Athlete data without errors(currently only null and blank)
-dfAthletesNew=dfAthletes.subtract(dfnullAthletes.union(dfAthletesblank))#give union of all error data inside subtract
-dfAthletesNew.show()
-
-# COMMAND ----------
-
-# DBTITLE 1,Getting Medal data without errors(currently only null and blank)
-dfMedalsNew=dfMedals.subtract(dfnullMedals.union(dfMedalsblank))#give union of all error data inside subtract 
-dfMedalsNew.show()
-
-# COMMAND ----------
-
-# DBTITLE 1,Getting Team data without errors(currently only null and blank)
-dfTeamsNew=dfTeams.subtract(dfnullTeams.union(dfTeamsblank))#give union of all error data inside subtract
-dfTeamsNew.show()
+try:
+    dfTeamsblank.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsBlank/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -310,7 +369,7 @@ try:
     dfAthletesDistinct = dfAthletes.distinct() #Distinct Records of Athlete Table
 except Exception as e:
     print(e)
-
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -319,6 +378,8 @@ try:
     dfAthletesDupIndicator = dfAthletes.join(dfAthletes.groupBy(dfAthletes.columns).agg((f.count("*")>1).cast("int").alias("Duplicate_indicator")), on=dfAthletes.columns, how="inner")
 except Exception as e:
     print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 
 # COMMAND ----------
@@ -327,14 +388,27 @@ try:
     dfAthletesDuplicate = dfAthletesDupIndicator.filter("Duplicate_indicator > 0").distinct().drop("Duplicate_indicator") #Duplicate Records of Athlete Table
 except Exception as e:
     print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
-dfAthletesDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthleteDuplicate/"+day)
+try:
+    dfAthletesDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthleteDuplicate/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
 
 # COMMAND ----------
 
-dfMedalsDistinct = dfMedals.distinct() #Distinct records of Medals Table
+try:
+    dfMedalsDistinct = dfMedals.distinct() #Distinct records of Medals Table
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -376,7 +450,13 @@ dfTeamsDuplicate = dfTeamsDupIndicator.filter("Duplicate_indicator > 0").distinc
 
 # COMMAND ----------
 
-dfTeamsDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsDuplicate/"+day)
+try:
+    dfTeamsDuplicate.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsDuplicate/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
 
 # COMMAND ----------
 
@@ -390,7 +470,7 @@ dfAthletesAlnum.filter(f.col("al")==True).show()
 
 # COMMAND ----------
 
-dfAthletesValidity=dfAthletesValidity.where("al")
+dfAthletesValidity=dfAthletesAlnum.where("al")
 
 # COMMAND ----------
 
@@ -423,6 +503,36 @@ dfTeamsValidity.show()
 
 # COMMAND ----------
 
+try:
+    dfTeamsValidity.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/TeamsValidity/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
+
+# COMMAND ----------
+
+try:
+    dfAthletesValidity.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AthletesValidity/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
+
+# COMMAND ----------
+
+try:
+    dfMedalsValidity.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/MedalsValidity/"+day)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+    
+
+# COMMAND ----------
+
 # DBTITLE 1,Error Logging
 
 
@@ -434,13 +544,37 @@ numberdict={"Gold":50,"Silver":50,"Bronze":50,"Total":150,"Rank By Total":100}#d
 # COMMAND ----------
 
 # DBTITLE 1,Accuracy: Number Check
-dfAcNCFmedals=dfMedalsNew.filter((f.col("Gold")>numberdict["Gold"])|(f.col("Silver")>numberdict["Silver"])|(f.col("Bronze")>numberdict["Bronze"])|(f.col("Total")>numberdict["Total"])|(f.col("Rank By Total")>numberdict["Rank By Total"]))#accuracy number check failed valued
+dfAcNCFmedals=dfMedals.filter((f.col("Gold")>numberdict["Gold"])|(f.col("Silver")>numberdict["Silver"])|(f.col("Bronze")>numberdict["Bronze"])|(f.col("Total")>numberdict["Total"])|(f.col("Rank By Total")>numberdict["Rank By Total"]))#accuracy number check failed valued
 dfAcNCFmedals.show()
 
 # COMMAND ----------
 
 # DBTITLE 1,Write the rows with number check failure to Storage
-dfAcNCFmedals.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AcNCFmedals/"+day)
+try:
+    dfAcNCFmedals.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/AcNCFmedals/"+day)
+    
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
+
+# COMMAND ----------
+
+# DBTITLE 1,Getting Athlete data without errors(currently Nulls, Blanks, Validity and Duplicates)
+dfAthletesNew=dfAthletes.subtract(dfnullAthletes.union(dfAthletesblank.union(dfAthletesValidity.drop("al")))).distinct()#give union of all error data inside subtract
+dfAthletesNew.show()
+
+# COMMAND ----------
+
+# DBTITLE 1,Getting Medal data without errors(currently Nulls, Blanks, Validity, Number Check and Duplicates)
+dfMedalsNew=dfMedals.subtract(dfnullMedals.union(dfMedalsblank.union(dfMedalsValidity.drop("al").union(dfAcNCFmedals)))).distinct()#give union of all error data inside subtract 
+dfMedalsNew.show()
+
+# COMMAND ----------
+
+# DBTITLE 1,Getting Team data without errors(currently Nulls, Blanks, Validity and Duplicates)
+dfTeamsNew=dfTeams.subtract(dfnullTeams.union(dfTeamsblank.union(dfTeamsValidity.drop("al")))).distinct()#give union of all error data inside subtract
+dfTeamsNew.show()
 
 # COMMAND ----------
 
