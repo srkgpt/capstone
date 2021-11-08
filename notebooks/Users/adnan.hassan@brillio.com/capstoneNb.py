@@ -12,6 +12,10 @@ pip install fuzzywuzzy
 
 # COMMAND ----------
 
+pip install country_list
+
+# COMMAND ----------
+
 # DBTITLE 1,Import modules
 import pyspark.sql.functions as f
 from functools import reduce
@@ -237,10 +241,6 @@ print("The percentage of blank in Teams is {}%".format((dfTeamsblank.count()/dfT
 
 from fuzzywuzzy import fuzz, process
 fuzz.ratio("spaiN","Spain")
-
-# COMMAND ----------
-
-#pip install country_list
 
 # COMMAND ----------
 
@@ -701,6 +701,62 @@ dfAcNCF.show()
 # COMMAND ----------
 
 reduce(lambda x,y:x | y,[(f.col(i)>int(maxdict[i])) for i in maxdict.keys()])
+
+# COMMAND ----------
+
+# DBTITLE 1,Untitled
+from country_list import countries_for_language
+countries=countries_for_language('en')
+print(countries)
+
+# COMMAND ----------
+
+newcont=[]
+for c in countries:
+    newcont.append(c[1])
+print(newcont)
+
+# COMMAND ----------
+
+newcont.append("ROC")
+newcont.append("Great Britain")
+newcont.append("Republic of Korea")
+newcont.append("Czech Republic")
+newcont.append("Laos")
+newcont.append("Virgin Islands, US")
+print(newcont)
+
+# COMMAND ----------
+
+dfMedalsNew.show()
+
+# COMMAND ----------
+
+noclist=[x['NOC'] for x in dfAthletesNew.collect()]
+noclist=set(noclist)
+print(noclist)
+
+# COMMAND ----------
+
+nomatch=[]
+for i in noclist:
+    j=process.extractOne(i,newcont,score_cutoff=80)
+    if j!=None:
+        if j[1]!=100:
+            print(i,j)
+            dfAthletesNew=dfAthletesNew.replace(i,j)
+    else:
+        nomatch.append(i)
+print("\nThese don't have a match:")
+for i in nomatch:
+    print(">",i)
+
+#fuzz.ratio("spaiN","Spain") > 80
+
+# COMMAND ----------
+
+
+dfAthletesNew.limit(dfAthletesNew.count()).where(f.col("NOC").like("%United%")).show(2000)
 
 # COMMAND ----------
 
