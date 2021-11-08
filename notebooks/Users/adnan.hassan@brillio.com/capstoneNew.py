@@ -127,7 +127,6 @@ def nullCheck(dataFrameStripped): #Returns a dataframe with Blanks filled with N
 
 # COMMAND ----------
 
-
 NullsCheck = nullCheck(dataFrameStripped)
 
 # COMMAND ----------
@@ -339,4 +338,3 @@ writeCleanData()
 
 # COMMAND ----------
 
-def 
