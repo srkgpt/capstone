@@ -1,4 +1,17 @@
 # Databricks notebook source
+pip install azure.storage.blob
+
+# COMMAND ----------
+
+pip install python-Levenshtein
+
+
+# COMMAND ----------
+
+pip install fuzzywuzzy
+
+# COMMAND ----------
+
 # DBTITLE 1,Import modules
 import pyspark.sql.functions as f
 from functools import reduce
@@ -14,11 +27,11 @@ from pyspark.sql.types import StructType,StructField, StringType, FloatType
 
 # DBTITLE 1,Widget Creation
 dbutils.widgets.removeAll()
-dbutils.widgets.text("storage","storage name")
-dbutils.widgets.text("container","container name")
-dbutils.widgets.text("clientid","client_id")
-dbutils.widgets.text("secret","secret key")
-dbutils.widgets.text("tenantid","tenant_id")
+dbutils.widgets.text("storage","capstonebr")
+dbutils.widgets.text("container","capstonedata")
+dbutils.widgets.text("clientid","11fff788-5d3c-487c-a255-6db7f2f2cac3")
+dbutils.widgets.text("secret","phk7Q~RAnMsSN-V96u4zLNjYSMn2z.N6zR.sY")
+dbutils.widgets.text("tenantid","97984c2b-a229-4609-8185-ae84947bc3fc")
 storage = dbutils.widgets.get("storage")
 print(storage)
 container = dbutils.widgets.get("container")
@@ -50,11 +63,6 @@ def ErrorLog(errorMsg):
 # COMMAND ----------
 
 # DBTITLE 1,Extract Data from Storage Account
-storage="capstonebr"
-container="capstonedata"
-clientid="11fff788-5d3c-487c-a255-6db7f2f2cac3"
-secret="phk7Q~RAnMsSN-V96u4zLNjYSMn2z.N6zR.sY"
-tenantid="97984c2b-a229-4609-8185-ae84947bc3fc"
 
 spark.conf.set("fs.azure.account.auth.type", "OAuth")
 spark.conf.set("fs.azure.account.oauth.provider.type", "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider")
@@ -76,8 +84,6 @@ except Exception as e:
 # COMMAND ----------
 
 dfAthletes.show()
-
-
 
 # COMMAND ----------
 
@@ -107,13 +113,17 @@ except Exception as e:
 
 dfTeams.show()
 
-
 # COMMAND ----------
 
 # DBTITLE 1,Remove Columns in Medals without headers
-for x in dfMedals.columns:
-    if "_c" in x:
-        dfMedals=dfMedals.drop(x)
+try:
+    for x in dfMedals.columns:
+        if "_c" in x:
+            dfMedals=dfMedals.drop(x)
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
         
 #fixneeded
 
@@ -145,7 +155,6 @@ except Exception as e:
     errorMsg = str(e)
     ErrorLog(errorMsg)
 
-
 # COMMAND ----------
 
 # DBTITLE 1,getting rows from Medals with string null
@@ -157,7 +166,6 @@ except Exception as e:
     print(e)
     errorMsg = str(e)
     ErrorLog(errorMsg)
-    
 
 # COMMAND ----------
 
@@ -191,10 +199,16 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,Remove Columns in Teams without headers
-for x in dfTeams.columns:
-    if "_c" in x:
-        dfTeams=dfTeams.drop(x)        
-dfTeams.show()
+try:
+    for x in dfTeams.columns:
+        if "_c" in x:
+            dfTeams=dfTeams.drop(x)        
+    dfTeams.show()
+    
+except Exception as e:
+    print(e)
+    errorMsg = str(e)
+    ErrorLog(errorMsg)
 
 # COMMAND ----------
 
@@ -221,26 +235,18 @@ print("The percentage of blank in Teams is {}%".format((dfTeamsblank.count()/dfT
 
 # COMMAND ----------
 
-pip install fuzzywuzzy
-
-# COMMAND ----------
-
-pip install python-Levenshtein
-
-# COMMAND ----------
-
 from fuzzywuzzy import fuzz, process
-fuzz.ratio("apain","Spain")
+fuzz.ratio("spaiN","Spain")
 
 # COMMAND ----------
 
-pip install country_list
+#pip install country_list
 
 # COMMAND ----------
 
-from country_list import countries_for_language
-countries=countries_for_language('en')
-print(countries)
+#from country_list import countries_for_language
+#countries=countries_for_language('en')
+#print(countries)
 
 # COMMAND ----------
 
@@ -301,9 +307,6 @@ except Exception as e:
     #dfErrorLog.show(truncate = False)
     dfErrorLog.write.save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",format='csv',mode='append',sep='\t') 
     #dfErrorLog1=dfErrorLog.union(dfErrorLog).show()
-    
-    
-
 
 # COMMAND ----------
 
@@ -314,7 +317,6 @@ except Exception as e:
     print(e)
     errorMsg = str(e)
     ErrorLog(errorMsg)
-    
 
 # COMMAND ----------
 
@@ -325,7 +327,6 @@ except Exception as e:
     print(e)
     errorMsg = str(e)
     ErrorLog(errorMsg)
-    
 
 # COMMAND ----------
 
@@ -336,31 +337,6 @@ except Exception as e:
     print(e)
     errorMsg = str(e)
     ErrorLog(errorMsg)
-
-# COMMAND ----------
-
-# DBTITLE 1,Initializing Error Dataframe
-emptyRDD = spark.sparkContext.emptyRDD()
-schema = StructType([
-  StructField('TableName', StringType(), True),
-  StructField('Column', StringType(), True),
-  StructField('CheckType', StringType(), True)
-  ])
-dfError=spark.createDataFrame(emptyRDD,schema)
-
-# COMMAND ----------
-
-# DBTITLE 1,Putting the Percentage of the Null Errors in a Dataframe
-errorschema=StructType([
-    StructField('TableName',StringType(),True),
-    StructField('ErrorPercentage',FloatType(),True),
-    StructField('TypeofError',StringType(),True)
-])
-dfErrorPer=spark.createDataFrame([('Athletes',round((dfnullAthletes.count()/dfAthletes.count())*100,3),'Null Error'),('Medals',round((dfnullMedals.count()/dfMedals.count())*100,3),'Null Error'),('Teams',round((dfnullTeams.count()/dfTeams.count())*100,3),'NullError'),('Athletes',round((dfAthletesblank.count()/dfAthletes.count())*100,3),'Blank Error'),('Medals',round((dfMedalsblank.count()/dfMedals.count())*100,3),'Blank Error'),('Teams',round((dfMedalsblank.count()/dfMedals.count())*100,3),'Blank Error')],errorschema)
-
-# COMMAND ----------
-
-dfErrorPer.show()
 
 # COMMAND ----------
 
@@ -381,7 +357,6 @@ except Exception as e:
     errorMsg = str(e)
     ErrorLog(errorMsg)
 
-
 # COMMAND ----------
 
 try:
@@ -399,7 +374,6 @@ except Exception as e:
     print(e)
     errorMsg = str(e)
     ErrorLog(errorMsg)
-    
 
 # COMMAND ----------
 
@@ -575,6 +549,158 @@ dfMedalsNew.show()
 # DBTITLE 1,Getting Team data without errors(currently Nulls, Blanks, Validity and Duplicates)
 dfTeamsNew=dfTeams.subtract(dfnullTeams.union(dfTeamsblank.union(dfTeamsValidity.drop("al")))).distinct()#give union of all error data inside subtract
 dfTeamsNew.show()
+
+# COMMAND ----------
+
+# DBTITLE 1,Initializing Error Dataframe
+emptyRDD = spark.sparkContext.emptyRDD()
+schema = StructType([
+  StructField('TableName', StringType(), True),
+  StructField('Column', StringType(), True),
+  StructField('CheckType', StringType(), True)
+  ])
+dfError=spark.createDataFrame(emptyRDD,schema)
+
+# COMMAND ----------
+
+# DBTITLE 1,Putting the Percentage of the Null and Blank Errors in a Dataframe
+errorschema=StructType([
+    StructField('TableName',StringType(),True),
+    StructField('ErrorPercentage',FloatType(),True),
+    StructField('TypeofError',StringType(),True)
+])
+dfErrorPer=spark.createDataFrame([('Athletes',round((dfnullAthletes.count()/dfAthletes.count())*100,3),'Null Error'),('Medals',round((dfnullMedals.count()/dfMedals.count())*100,3),'Null Error'),('Teams',round((dfnullTeams.count()/dfTeams.count())*100,3),'NullError'),('Athletes',round((dfAthletesblank.count()/dfAthletes.count())*100,3),'Blank Error'),('Medals',round((dfMedalsblank.count()/dfMedals.count())*100,3),'Blank Error'),('Teams',round((dfTeamsblank.count()/dfTeams.count())*100,3),'Blank Error'),('Athletes',round((dfAthletesDuplicate.count()/dfAthletes.count())*100,3),'Duplicate Error'),('Medals',round((dfMedalsDuplicate.count()/dfMedals.count())*100,3),'Duplicate Error'),('Teams',round((dfTeamsDuplicate.count()/dfTeams.count())*100,3),'Duplicate Error'),('Athletes',round((dfAthletesValidity.count()/dfAthletes.count())*100,3),'Validity Error'),('Medals',round((dfMedalsValidity.count()/dfMedals.count())*100,3),'Validity Error'),('Teams',round((dfTeamsValidity.count()/dfTeams.count())*100,3),'Validity Error'),('Athletes',0.0,'Accuracy Number Check Error'),('Medals',round((dfAcNCFmedals.count()/dfMedals.count())*100,3),'Accuracy Number Check Error'),('Teams',0.0,'Accuracy Number Check Error'),],errorschema)
+
+# COMMAND ----------
+
+dfErrorPer.show()
+
+# COMMAND ----------
+
+dfErrorPer.select("TableName","ErrorPercentage").groupBy("TableName").sum("ErrorPercentage").show()
+
+# COMMAND ----------
+
+joinexp= fuzz.ratio(dfTeamsNew.NOC,dfAthletesNew.Discipline)>60
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+from fuzzywuzzy import process
+athnoclist=[x.NOC for x in dfAthletes.collect()]
+athnoclist=set(athnoclist)
+print(len(athnoclist))
+def extractfn1(dfT,athlist):
+    namelist=[]
+    rows=[x.Name for x in dfT.collect()]
+    for name in rows:
+        namelist.append((name,process.extractOne(name,athlist)[0]))
+    dfTN=spark.createDataFrame(data=namelist,schema=["Name","NewName"])
+    dfT.join(dfTN, dfT.Name==dfTN.Name,"inner").show()
+
+# COMMAND ----------
+
+extractfn1(dfTeamsNew,athnoclist)
+
+# COMMAND ----------
+
+dfNewAT=dfTeamsNew.join(dfAthletesNew,(fuzz.ratio(dfTeamsNew.NOC,dfAthletesNew.NOC)>60),"inner")
+dfNewAT.show()
+
+# COMMAND ----------
+
+pip install azure.storage.blob
+
+# COMMAND ----------
+
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+connect_str = "DefaultEndpointsProtocol=https;AccountName=capstonebr;AccountKey=ac5pMU5ZuyIDeTiJFz3YiYQdumUp2OruitzNHaaX+cf3ZHOHLm0rGOYhuibtlmBg/edhSiDY1ExQlzd2o+eEDg==;EndpointSuffix=core.windows.net"
+containerobj=ContainerClient.from_container_url("https://capstonebr.blob.core.windows.net/capstonedata?sp=rl&st=2021-11-03T05:35:16Z&se=2021-11-10T13:35:16Z&spr=https&sv=2020-08-04&sr=c&sig=Uv3ctfLcye1I0HoiDUQc2bVIBTafp9yI0ZKbhgLNurs%3D")
+blob_list=containerobj.list_blobs(name_starts_with=None, include=None)
+listofinput=[blob.name for blob in blob_list if '.csv' in blob.name and 'part' not in blob.name]
+print(listofinput)
+
+# COMMAND ----------
+
+dbutils.widgets.multiselect("Choose Tables needed",listofinput[0],listofinput)
+
+# COMMAND ----------
+
+tables=dbutils.widgets.get("Choose Tables needed")
+print(tables)
+tables=tables.split(',')
+print(tables)
+
+# COMMAND ----------
+
+df=spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/"+tables[1])
+df.show()
+
+# COMMAND ----------
+
+columnlist=[x for x in df.columns if not x.startswith('_c')]
+print(columnlist)
+
+# COMMAND ----------
+
+print(columnlist[1])
+
+# COMMAND ----------
+
+dbutils.widgets.dropdown(tables[1]+" join",columnlist[1],columnlist,"Column to use for join in "+tables[1])
+dbutils.widgets.multiselect(tables[1]+" numbercheck",columnlist[0],columnlist,"Column which are numbers "+tables[1])
+
+# COMMAND ----------
+
+def gen1():
+    n=10
+    i=0
+    while i<n:
+        yield i
+        i+=1
+list1=gen1()
+print(next(list1))
+print(next(list1))
+print(next(list1))
+print(next(list1))
+
+# COMMAND ----------
+
+dbutils.widgets.help("combobox")
+
+# COMMAND ----------
+
+colnc=dbutils.widgets.get(tables[1]+" numbercheck")
+colnc=colnc.split(',')
+print(colnc)
+
+# COMMAND ----------
+
+df.select(colnc).show()
+
+# COMMAND ----------
+
+for i in range(0,len(colnc)):
+    dbutils.widgets.text("max"+colnc[i],'0')
+
+# COMMAND ----------
+
+maxdict={}
+for i in range(0,len(colnc)):
+    maxdict[colnc[i]]=dbutils.widgets.get("max"+colnc[i])
+print(maxdict)
+
+# COMMAND ----------
+
+dfAcNCF=df.select(columnlist).where(reduce(lambda x,y:x | y,[(f.col(i)>int(maxdict[i])) for i in maxdict.keys()]))#accuracy number check failed valued
+dfAcNCF.show()
+
+# COMMAND ----------
+
+reduce(lambda x,y:x | y,[(f.col(i)>int(maxdict[i])) for i in maxdict.keys()])
 
 # COMMAND ----------
 
