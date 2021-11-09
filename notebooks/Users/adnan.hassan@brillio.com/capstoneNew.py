@@ -20,7 +20,7 @@ from datetime import date
 from pyspark.sql.functions import lit,unix_timestamp
 import time
 import datetime
-from pyspark.sql.types import StructType,StructField, StringType, FloatType
+from pyspark.sql.types import StructType,StructField, StringType, FloatType,IntegerType
 
 
 
@@ -55,12 +55,13 @@ def ErrorLog(errorMsg):
     dict = [{'Error Message': errorMsg}]
     dfEMessage = spark.createDataFrame(dict)
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') 
-    dfErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
-    #dfErrorLog=spark.read.format("csv").option("header","True").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog")
-   # dfErrorLog.show()
-    #dfErrorLog=dfErrorLog.union(dfNewErrorLog)
-   # dfErrorLog.show()
-    dfErrorLog.coalesce(1).write.option("Header","True").save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog", format="csv",mode="overwrite") 
+    dfNewErrorLog = dfEMessage.withColumn('time',unix_timestamp(lit(timestamp),'yyyy-MM-dd HH:mm:ss').cast("timestamp"))
+    dfErrorLog=spark.read.format("csv").option("header","True").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog")
+    dfErrorLog.show()
+    dfErrorLog=dfErrorLog.union(dfNewErrorLog)
+    dfErrorLog.show()
+    dfErrorLog.coalesce(1).write.option("Header","True").save(path="abfss://"+container+"@"+storage+".dfs.core.windows.net/errorLog",
+                                         format="csv",mode="overwrite") 
   
 
 # COMMAND ----------
@@ -287,6 +288,34 @@ fileNameF
 
 # COMMAND ----------
 
+# DBTITLE 1,Error percentage and Error Count
+errorschema1=StructType([
+    StructField('TableName',StringType(),True),
+    StructField('TypeofError',StringType(),True),
+    StructField('ActualCount',IntegerType(),True),
+    StructField('Error count',IntegerType(),True),
+    StructField('cleandata count',IntegerType(),True),
+    StructField('ErrorPercentage',FloatType(),True)
+])
+
+# COMMAND ----------
+
+def ErrorStats():
+    try:
+        dfErrorstats=spark.createDataFrame([(fileNameF,'Null Error',dataFrameStripped.count(),NullsCheck.count(),dataFrameStripped.count()-       NullsCheck.count(),round((NullsCheck.count()/dataFrameStripped.count())*100,3)),
+    (fileNameF,'Duplicate Error',dataFrameStripped.count(),DuplicateCheck.count(),dataFrameStripped.count()-DuplicateCheck.count(),round((DuplicateCheck.count()/dataFrameStripped.count())*100,3)),
+    (fileNameF,'Validity Error',dataFrameStripped.count(),numValidityCheck.count(),dataFrameStripped.count()-numValidityCheck.count(),round((numValidityCheck.count()/dataFrameStripped.count())*100,3)),
+    (fileNameF,'Accuracy Number Check Error',dataFrameStripped.count(),AccuracyCheck.count(),dataFrameStripped.count()-AccuracyCheck.count(),round((AccuracyCheck.count()/dataFrameStripped.count())*100,3))],errorschema1)
+        return dfErrorstats
+    except Exception as e:
+        ErrorLog(str(e))
+
+# COMMAND ----------
+
+ErrorStats= ErrorStats()
+
+# COMMAND ----------
+
 # DBTITLE 1,Writing to Storage Blob
 def writeNullsCheck():
     try:
@@ -313,6 +342,11 @@ def writeCleanData():
         CleanData.write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/"+fileNameF+"/CleanData/"+day)
     except Exception as e:
         ErrorLog(str(e))
+def writeErrorStats():
+    try:
+        ErrorStats.coalesce(1).write.csv("abfss://"+container+"@"+storage+".dfs.core.windows.net/"+fileNameF+"/ErrorStats/"+day)
+    except Exception as e:
+        ErrorLog(str(e))
 
 # COMMAND ----------
 
@@ -335,6 +369,34 @@ writeAccuracyCheck()
 # COMMAND ----------
 
 writeCleanData()
+
+# COMMAND ----------
+
+writeErrorStats()
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+df=spark.read.format("csv").option("header","true").option("inferSchema", "true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/"+fileName)
+
+# COMMAND ----------
+
+df = df.na.fill('', subset=[i for i in df.columns])
+
+# COMMAND ----------
+
+df.show()
+
+# COMMAND ----------
+
+dfb = df.where(reduce(lambda x, y: x | y, (f.col(x)=='' for x in dataFrameStripped.columns)))
+
+# COMMAND ----------
+
+dfb.show()
 
 # COMMAND ----------
 
