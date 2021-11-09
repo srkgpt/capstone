@@ -23,9 +23,7 @@ from datetime import date
 from pyspark.sql.functions import lit,unix_timestamp
 import time
 import datetime
-from pyspark.sql.types import StructType,StructField, StringType, FloatType
-
-
+from pyspark.sql.types import StructType,StructField, StringType, FloatType, IntegerType
 
 # COMMAND ----------
 
@@ -577,7 +575,38 @@ dfErrorPer.show()
 
 # COMMAND ----------
 
-dfErrorPer.select("TableName","ErrorPercentage").groupBy("TableName").sum("ErrorPercentage").show()
+errorschema1=StructType([
+    StructField('TableName',StringType(),True),
+    StructField('TypeofError',StringType(),True),
+    StructField('ActualCount',IntegerType(),True),
+    StructField('Error count',IntegerType(),True),
+    StructField('cleandata count',IntegerType(),True),
+    StructField('ErrorPercentage',FloatType(),True)
+])
+dfErrorstats=spark.createDataFrame([
+    ('Athletes','Null Error',dfAthletes.count(),dfnullAthletes.count(),dfAthletes.count()-dfnullAthletes.count(),round((dfnullAthletes.count()/dfAthletes.count())*100,3)),
+    ('Medals','Null Error',dfMedals.count(),dfnullMedals.count(),dfMedals.count()-dfnullMedals.count(),round((dfnullMedals.count()/dfMedals.count())*100,3)),
+    ('Teams','Null Error',dfTeams.count(),dfnullTeams.count(),dfTeams.count()-dfnullTeams.count(),round((dfnullTeams.count()/dfTeams.count())*100,3)),
+    ('Athletes','Blank Error',dfAthletes.count(),dfAthletesblank.count(),dfAthletes.count()-dfAthletesblank.count(),round((dfAthletesblank.count()/dfAthletes.count())*100,3)),
+    ('Medals','Blank Error',dfMedals.count(),dfMedalsblank.count(),dfMedals.count()-dfMedalsblank.count(),round((dfMedalsblank.count()/dfMedals.count())*100,3)),
+    ('Teams','Blank Error',dfTeams.count(),dfTeamsblank.count(),dfTeams.count()-dfTeamsblank.count(),round((dfTeamsblank.count()/dfTeams.count())*100,3)),
+    ('Athletes','Duplicate Error',dfAthletes.count(),dfAthletesDuplicate.count(),dfAthletes.count()-dfAthletesDuplicate.count(),round((dfAthletesDuplicate.count()/dfAthletes.count())*100,3)),
+    ('Medals','Duplicate Error',dfMedals.count(),dfMedalsDuplicate.count(),dfMedals.count()-dfMedalsDuplicate.count(),round((dfMedalsDuplicate.count()/dfMedals.count())*100,3)),
+    ('Teams','Duplicate Error',dfTeams.count(),dfTeamsDuplicate.count(),dfTeams.count()-dfTeamsDuplicate.count(),round((dfTeamsDuplicate.count()/dfTeams.count())*100,3)),
+    ('Athletes','Validity Error',dfAthletes.count(),dfAthletesValidity.count(),dfAthletes.count()-dfAthletesValidity.count(),round((dfAthletesValidity.count()/dfAthletes.count())*100,3)),
+    ('Medals','Validity Error',dfMedals.count(),dfMedalsValidity.count(),dfMedals.count()-dfMedalsValidity.count(),round((dfMedalsValidity.count()/dfMedals.count())*100,3)),
+    ('Teams','Validity Error',dfTeams.count(),dfTeamsValidity.count(),dfTeams.count()-dfTeamsValidity.count(),round((dfTeamsValidity.count()/dfTeams.count())*100,3)),
+    ('Athletes','Accuracy Number Check Error',0,0,0,0.0),
+    ('Medals','Accuracy Number Check Error',dfMedals.count(),dfAcNCFmedals.count(),dfMedals.count()-dfAcNCFmedals.count(),round((dfAcNCFmedals.count()/dfMedals.count())*100,3)),
+    ('Teams','Accuracy Number Check Error',0,0,0,0.0),],errorschema1)
+
+# COMMAND ----------
+
+dfErrorstats.show()
+
+# COMMAND ----------
+
+dfErrorstats.select("TypeofError","Error count").groupBy("TypeofError").sum("Error count").show()
 
 # COMMAND ----------
 
@@ -724,6 +753,7 @@ newcont.append("Republic of Korea")
 newcont.append("Czech Republic")
 newcont.append("Laos")
 newcont.append("Virgin Islands, US")
+newcont.append("Kosovo")
 print(newcont)
 
 # COMMAND ----------
