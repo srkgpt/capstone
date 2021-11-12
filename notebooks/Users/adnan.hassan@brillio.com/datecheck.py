@@ -54,3 +54,55 @@ df2.show()
 
 # COMMAND ----------
 
+#df3=df2.select(f.date_format(f.col("DATE"),"dd:MM:yyyy HH:mm").alias("new"))
+df3=df2.select(f.col("DATE"),
+              when(f.to_date(f.col("DATE"),"ddMMyyyy HH:mm").isNull,date_format(f.col("DATE"),)))
+
+# COMMAND ----------
+
+#df2.select(f.date_format('DATE','yyyy-MM-dd HH:mm').alias('new_dt')).show()
+
+# COMMAND ----------
+
+df3.show()
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+
+df2.select(f.date_format('DATE', 'MM/dd/yyy').alias('date')).collect()
+
+# COMMAND ----------
+
+df4 = spark.createDataFrame([('12-04-2021',)], ['a'])
+df4.select(f.date_format('a', 'dd/MM/yyyy').alias('date')).collect()
+
+# COMMAND ----------
+
+output_format = 'dd/MM/yyyy'
+df5=df4.select(f.date_format(
+    f.unix_timestamp("a", "MM-dd-yyyy").cast("timestamp"), 
+    output_format
+))
+
+# COMMAND ----------
+
+df5.show()
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+df.select(f.round("POPULATION")).show()
+
+# COMMAND ----------
+
