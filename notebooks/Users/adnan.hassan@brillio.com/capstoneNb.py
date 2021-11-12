@@ -21,9 +21,11 @@ import pyspark.sql.functions as f
 from functools import reduce
 from datetime import date
 from pyspark.sql.functions import lit,unix_timestamp
+import pyspark.sql
 import time
 import datetime
 from pyspark.sql.types import StructType,StructField, StringType, FloatType, IntegerType
+
 
 # COMMAND ----------
 
@@ -610,41 +612,6 @@ dfErrorstats.select("TypeofError","Error count").groupBy("TypeofError").sum("Err
 
 # COMMAND ----------
 
-joinexp= fuzz.ratio(dfTeamsNew.NOC,dfAthletesNew.Discipline)>60
-
-# COMMAND ----------
-
-
-
-# COMMAND ----------
-
-from fuzzywuzzy import process
-athnoclist=[x.NOC for x in dfAthletes.collect()]
-athnoclist=set(athnoclist)
-print(len(athnoclist))
-def extractfn1(dfT,athlist):
-    namelist=[]
-    rows=[x.Name for x in dfT.collect()]
-    for name in rows:
-        namelist.append((name,process.extractOne(name,athlist)[0]))
-    dfTN=spark.createDataFrame(data=namelist,schema=["Name","NewName"])
-    dfT.join(dfTN, dfT.Name==dfTN.Name,"inner").show()
-
-# COMMAND ----------
-
-extractfn1(dfTeamsNew,athnoclist)
-
-# COMMAND ----------
-
-dfNewAT=dfTeamsNew.join(dfAthletesNew,(fuzz.ratio(dfTeamsNew.NOC,dfAthletesNew.NOC)>60),"inner")
-dfNewAT.show()
-
-# COMMAND ----------
-
-pip install azure.storage.blob
-
-# COMMAND ----------
-
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 connect_str = "DefaultEndpointsProtocol=https;AccountName=capstonebr;AccountKey=ac5pMU5ZuyIDeTiJFz3YiYQdumUp2OruitzNHaaX+cf3ZHOHLm0rGOYhuibtlmBg/edhSiDY1ExQlzd2o+eEDg==;EndpointSuffix=core.windows.net"
 containerobj=ContainerClient.from_container_url("https://capstonebr.blob.core.windows.net/capstonedata?sp=rl&st=2021-11-03T05:35:16Z&se=2021-11-10T13:35:16Z&spr=https&sv=2020-08-04&sr=c&sig=Uv3ctfLcye1I0HoiDUQc2bVIBTafp9yI0ZKbhgLNurs%3D")
@@ -681,24 +648,6 @@ print(columnlist[1])
 
 dbutils.widgets.dropdown(tables[1]+" join",columnlist[1],columnlist,"Column to use for join in "+tables[1])
 dbutils.widgets.multiselect(tables[1]+" numbercheck",columnlist[0],columnlist,"Column which are numbers "+tables[1])
-
-# COMMAND ----------
-
-def gen1():
-    n=10
-    i=0
-    while i<n:
-        yield i
-        i+=1
-list1=gen1()
-print(next(list1))
-print(next(list1))
-print(next(list1))
-print(next(list1))
-
-# COMMAND ----------
-
-dbutils.widgets.help("combobox")
 
 # COMMAND ----------
 
@@ -758,7 +707,7 @@ print(newcont)
 
 # COMMAND ----------
 
-dfMedalsNew.show()
+dfAthletesNew.show()
 
 # COMMAND ----------
 
@@ -786,7 +735,132 @@ for i in nomatch:
 # COMMAND ----------
 
 
-dfAthletesNew.limit(dfAthletesNew.count()).where(f.col("NOC").like("%United%")).show(2000)
+dfAthletesNew.limit(dfAthletesNew.count()).where(f.col("NOC").like("%United%")).show()
+
+# COMMAND ----------
+
+teamnoclist=[x['Team/NOC'] for x in dfMedalsNew.collect()]
+teamnoclist=set(teamnoclist)
+print(teamnoclist)
+
+# COMMAND ----------
+
+nomatch=[]
+for i in teamnoclist:
+    j=process.extractOne(i,newcont,score_cutoff=80)
+    if j!=None:
+        if j[1]!=100:
+            print(i,j)
+            dfMedalsNew=dfMedalsNew.replace(i,j)
+    else:
+        nomatch.append(i)
+print("\nThese don't have a match:")
+for i in nomatch:
+    print(">",i)
+
+
+# COMMAND ----------
+
+teamlist=[x['NOC'] for x in dfTeamsNew.collect()]
+teamlist=set(teamlist)
+print(teamlist)
+
+# COMMAND ----------
+
+nomatch=[]
+for i in teamlist:
+    j=process.extractOne(i,newcont,score_cutoff=80)
+    if j!=None:
+        if j[1]!=100:
+            print(i,j)
+            dfTeamsNew=dfTeamsNew.replace(i,j)
+    else:
+        nomatch.append(i)
+print("\nThese don't have a match:")
+for i in nomatch:
+    print(">",i)
+
+
+# COMMAND ----------
+
+dfTeamsNew.show()
+
+# COMMAND ----------
+
+dfAthletesTemp=dfAthletesNew.toDF("Name","NOC","Discipline")
+dfAthletesTemp.show()
+
+# COMMAND ----------
+
+dfjoin1=dfTeamsNew.join(dfAthletesTemp, dfTeamsNew.NOC==dfAthletesTemp.ANOC,"inner")
+
+# TeamsNewVie
+
+# COMMAND ----------
+
+print(dfTeamsNew.count()*dfAthletesTemp.count())
+
+# COMMAND ----------
+
+dfjoin1.rdd.getNumPartition()
+
+# COMMAND ----------
+
+dfjoin1.first()
+
+# COMMAND ----------
+
+
+dfAthletesNew.createOrReplaceTempView("athlete")
+spark.sql("SELECT * FROM athlete").show(10)
+
+# COMMAND ----------
+
+dfTeamsNew.createOrReplaceTempView("team")
+
+# COMMAND ----------
+
+spark.sql("SELECT * FROM team").show()
+
+# COMMAND ----------
+
+spark.sql("SELECT * FROM athlete INNER JOIN team ON athlete.NOC=team.NOC").show()
+
+# COMMAND ----------
+
+from pyspark.sql.functions import broadcast
+
+# COMMAND ----------
+
+dfMedalsNew=dfMedalsNew.toDF("Rank","NOC","Gold","Silver","Bronze","Total","RankbyTotal")
+dfMedalsNew.show()
+
+
+# COMMAND ----------
+
+dfAthletesTemp=dfAthletesTemp.cache()
+dfTeamsNew=dfTeamsNew.cache()
+dfMedalsNew=dfMedalsNew.cache()
+print(dfTeamsNew.count())
+print(dfAthletesTemp.count())
+print(dfMedalsNew.count())
+
+# COMMAND ----------
+
+dfjoin2=dfAthletesTemp.join(broadcast(dfTeamsNew), on=['NOC'],how="inner").join(broadcast(dfMedalsNew),on=['NOC'],how="inner")
+
+# COMMAND ----------
+
+dfjoin2=dfjoin2.cache()
+print(dfjoin2.count())
+
+# COMMAND ----------
+
+dfjoin2.show()
+
+# COMMAND ----------
+
+dfjoin2.filter("total>100").count()
 
 # COMMAND ----------
 
