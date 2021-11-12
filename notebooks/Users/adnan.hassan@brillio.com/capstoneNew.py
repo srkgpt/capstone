@@ -380,23 +380,3 @@ writeErrorStats()
 
 # COMMAND ----------
 
-df=spark.read.format("csv").option("header","true").option("inferSchema", "true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/"+fileName)
-
-# COMMAND ----------
-
-df = df.na.fill('', subset=[i for i in df.columns])
-
-# COMMAND ----------
-
-df.show()
-
-# COMMAND ----------
-
-dfb = df.where(reduce(lambda x, y: x | y, (f.col(x)=='' for x in dataFrameStripped.columns)))
-
-# COMMAND ----------
-
-dfb.show()
-
-# COMMAND ----------
-
