@@ -25,6 +25,8 @@ import pyspark.sql
 import time
 import datetime
 from pyspark.sql.types import StructType,StructField, StringType, FloatType, IntegerType
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 # COMMAND ----------
@@ -613,6 +615,23 @@ dfErrorstats.select("TypeofError","Error count").groupBy("TypeofError").sum("Err
 
 # COMMAND ----------
 
+df = dfErrorstats.select("TypeofError","Error count").groupBy("TypeofError").sum("Error count").toPandas()
+df.plot(kind = 'bar',
+        x = 'TypeofError',
+        y = 'sum(Error count)',
+        color = 'green')
+
+plt.title('Bar Chart for the number of Types of Error Encountered')
+plt.xlabel('Type of Error')
+plt.ylabel('Total Error Count')
+plt.show()
+
+# COMMAND ----------
+
+dfErrorstats.select("TypeofError","Error count").groupBy("TypeofError").sum("Error count").show()
+
+# COMMAND ----------
+
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 connect_str = "DefaultEndpointsProtocol=https;AccountName=capstonebr;AccountKey=ac5pMU5ZuyIDeTiJFz3YiYQdumUp2OruitzNHaaX+cf3ZHOHLm0rGOYhuibtlmBg/edhSiDY1ExQlzd2o+eEDg==;EndpointSuffix=core.windows.net"
 containerobj=ContainerClient.from_container_url("https://capstonebr.blob.core.windows.net/capstonedata?sp=rl&st=2021-11-03T05:35:16Z&se=2021-11-10T13:35:16Z&spr=https&sv=2020-08-04&sr=c&sig=Uv3ctfLcye1I0HoiDUQc2bVIBTafp9yI0ZKbhgLNurs%3D")
@@ -862,6 +881,16 @@ dfjoin2.show()
 # COMMAND ----------
 
 dfjoin2.filter("total>100").count()
+
+# COMMAND ----------
+
+dfErrorstats.show()
+
+# COMMAND ----------
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 # COMMAND ----------
 
