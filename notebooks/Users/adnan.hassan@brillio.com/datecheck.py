@@ -55,8 +55,8 @@ df2.show()
 # COMMAND ----------
 
 #df3=df2.select(f.date_format(f.col("DATE"),"dd:MM:yyyy HH:mm").alias("new"))
-df3=df2.select(f.col("DATE"),
-              when(f.to_date(f.col("DATE"),"ddMMyyyy HH:mm").isNull,date_format(f.col("DATE"),)))
+#df3=df2.select(f.col("DATE"),f.when(f.to_date(f.col("DATE"),"dd-MM-yyyy HH:mm").isNull,f.date_format(f.col("DATE"),"dd-MM-yyyy HH:mm")).otherwise("unknown")).alias("new")
+
 
 # COMMAND ----------
 
