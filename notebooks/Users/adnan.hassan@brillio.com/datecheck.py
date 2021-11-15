@@ -106,3 +106,35 @@ df.select(f.round("POPULATION")).show()
 
 # COMMAND ----------
 
+dftemp = spark.read.format("csv").option("header","true").option("inferSchema","True").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/covid19Vaccination.csv")
+
+# COMMAND ----------
+
+dftemp.show()
+
+# COMMAND ----------
+
+datelist=[x['DATE'] for x in dftemp.collect()]
+datelist=set(datelist)
+print(datelist)
+
+# COMMAND ----------
+
+from datetime import datetime
+from dateutil import parser
+for i in datelist:
+    try:
+        j=parser.parse(i)
+    except:
+        j=datetime.strptime(i,'%Y-%d-%m %H:%M')
+    #j=datetime.strptime(i,'%Y-%m-%d')
+    j=datetime.strftime(j,'%Y-%m-%d %H:%M')
+    print(j)
+    dftemp=dftemp.replace(i,j)
+
+# COMMAND ----------
+
+dftemp.show()
+
+# COMMAND ----------
+
