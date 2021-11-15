@@ -31,22 +31,23 @@ from pyspark.sql.types import StructType,StructField, StringType, FloatType, Int
 
 # DBTITLE 1,Widget Creation
 dbutils.widgets.removeAll()
-dbutils.widgets.text("storage","capstonebr")
-dbutils.widgets.text("container","capstonedata")
-dbutils.widgets.text("clientid","11fff788-5d3c-487c-a255-6db7f2f2cac3")
-dbutils.widgets.text("secret","phk7Q~RAnMsSN-V96u4zLNjYSMn2z.N6zR.sY")
-dbutils.widgets.text("tenantid","97984c2b-a229-4609-8185-ae84947bc3fc")
+dbutils.widgets.text("storage","capstonebatch1")
+dbutils.widgets.text("container","capstone")
+dbutils.widgets.text("clientid","5dfd2400-29b4-40c0-8c9b-953dd22900d5")
+#dbutils.widgets.text("secret","wCJ7Q~jIuHjYhLC27F4zQftjQWXX0fNQ0TXTM")
+dbutils.widgets.text("tenantid","3882b70d-a91e-468c-9928-820358bfbd73")
 storage = dbutils.widgets.get("storage")
 print(storage)
 container = dbutils.widgets.get("container")
 print(container)
 clientid = dbutils.widgets.get("clientid")
 print(clientid)
-secret = dbutils.widgets.get("secret")
-print(secret)
+#secret = dbutils.widgets.get("secret")
+#print(secret)
 tenantid = dbutils.widgets.get("tenantid")
 print(tenantid)
 #dbutils.widgets.removeAll()
+secret = dbutils.secrets.get(scope="secret", key="secret")
 
 # COMMAND ----------
 
