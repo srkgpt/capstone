@@ -3,16 +3,6 @@ pip install azure.storage.blob
 
 # COMMAND ----------
 
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-connect_str = "DefaultEndpointsProtocol=https;AccountName=capstonebatch1;AccountKey=P6MOQsMJmjg3rH4J0mkh+/lUIpY7cUkpV1aF8sW+vwXjePK/sXyv/iXnmI4B0/MkbgOSjgplvzXmhyPqrwjnsw==;EndpointSuffix=core.windows.net"
-containerobj=ContainerClient.from_container_url("https://capstonebatch1.blob.core.windows.net/capstone?sp=l&st=2021-11-15T06:14:58Z&se=2022-11-15T14:14:58Z&spr=https&sv=2020-08-04&sr=c&sig=C6dqpWPNp1iR75%2F692%2BcjtjVVHgGjj4FVtwKvQnH8dk%3D")
-blob_list=containerobj.list_blobs(name_starts_with=None, include=None)
-listofinput=[blob.name for blob in blob_list if '.csv' in blob.name and 'part' not in blob.name]
-print(listofinput)
-
-
-# COMMAND ----------
-
 # DBTITLE 1,Importing Libraries
 import pyspark.sql.functions as f
 from functools import reduce
@@ -21,7 +11,17 @@ from pyspark.sql.functions import lit,unix_timestamp
 import time
 import datetime
 from pyspark.sql.types import StructType,StructField, StringType, FloatType,IntegerType
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+import pandas as pd
+import matplotlib.pyplot as plt
 
+# COMMAND ----------
+
+connect_str = "DefaultEndpointsProtocol=https;AccountName=capstonebatch1;AccountKey=P6MOQsMJmjg3rH4J0mkh+/lUIpY7cUkpV1aF8sW+vwXjePK/sXyv/iXnmI4B0/MkbgOSjgplvzXmhyPqrwjnsw==;EndpointSuffix=core.windows.net"
+containerobj=ContainerClient.from_container_url("https://capstonebatch1.blob.core.windows.net/capstone?sp=l&st=2021-11-15T06:14:58Z&se=2022-11-15T14:14:58Z&spr=https&sv=2020-08-04&sr=c&sig=C6dqpWPNp1iR75%2F692%2BcjtjVVHgGjj4FVtwKvQnH8dk%3D")
+blob_list=containerobj.list_blobs(name_starts_with=None, include=None)
+listofinput=[blob.name for blob in blob_list if '.csv' in blob.name and 'part' not in blob.name]
+print(listofinput)
 
 
 # COMMAND ----------
@@ -44,9 +44,9 @@ print(clientid)
 #print(secret)
 tenantid = dbutils.widgets.get("tenantid")
 print(tenantid)
-
 fileName = dbutils.widgets.get("Choose Tables needed")
 print(fileName)
+#extracting secret from kayvault
 secret = dbutils.secrets.get(scope="secret", key="secret")
 
 # COMMAND ----------
@@ -84,18 +84,16 @@ def LoadData(fileName):
         print(e)
         errorMsg = str(e)
         ErrorLog(errorMsg)
+dataFrame = LoadData(fileName)
+dataFrame.show(5)
 
 # COMMAND ----------
 
 
-dataFrame = LoadData(fileName)
-
-dataFrame.show()
 
 # COMMAND ----------
 
 # DBTITLE 1,Function to get dataframe without unwanted columns
-
 def UnwantedCol(dataFrame):
     try:
         for x in dataFrame.columns:
@@ -107,13 +105,8 @@ def UnwantedCol(dataFrame):
         print(e)
         errorMsg = str(e)
         ErrorLog(errorMsg)
-        
-#fixneeded
-
-# COMMAND ----------
 
 dataFrameStripped = UnwantedCol(dataFrame) #Unwanted Columns stripped
-dataFrameStripped.show()
 
 # COMMAND ----------
 
@@ -126,34 +119,8 @@ def nullCheck(dataFrameStripped): #Returns a dataframe with Blanks filled with N
         print(e)
         errorMsg = str(e)
         ErrorLog(errorMsg)
-
-# COMMAND ----------
-
-NullsCheck = nullCheck(dataFrameStripped)
-
-# COMMAND ----------
-
-NullsCheck.show()
-
-# COMMAND ----------
-
-# DBTITLE 1,Function to get rows with string null
-#def GetStringNull(dataFrameStripped): #Returns a dataframe with String "null"
-  #  try:
-  #      return  dataFrameStripped.where(reduce(lambda x, y: x | y, (f.col(x)=="null" for x in dataFrameStripped.columns)))
         
-  #  except Exception as e:
-  #      print(e)
-   #     errorMsg = str(e)
-   #     ErrorLog(errorMsg)
-
-# COMMAND ----------
-
-#nullDF = GetStringNull(dataFrameStripped)
-
-# COMMAND ----------
-
-#nullDF.show()
+NullsCheck = nullCheck(dataFrameStripped)
 
 # COMMAND ----------
 
@@ -167,10 +134,7 @@ def GetDistinct(dataFrameStripped):
         errorMsg = str(e)
         ErrorLog(errorMsg)
 
-# COMMAND ----------
-
 DistinctDF= GetDistinct(dataFrameStripped)
-DistinctDF.show()
 
 # COMMAND ----------
 
@@ -184,10 +148,7 @@ def GetDuplicate(dataFrameStripped):
         errorMsg = str(e)
         ErrorLog(errorMsg)
 
-# COMMAND ----------
-
 DuplicateCheck = GetDuplicate(dataFrameStripped)
-DuplicateCheck.show()
 
 # COMMAND ----------
 
@@ -203,33 +164,12 @@ def ValidateNumDType(dataFrameStripped):
         print(e)
         errorMsg = str(e)
         ErrorLog(errorMsg)
-
-# COMMAND ----------
-
+        
 numValidityCheck = ValidateNumDType(dataFrameStripped)
-numValidityCheck.show()
 
 # COMMAND ----------
 
 # DBTITLE 1,Accuracy Check
-#columns=[x for x in dataFrameStripped.columns]
-#print(columns)
-#dbutils.widgets.multiselect("NumberCheck", columns[0], columns,"Select Columns for Numeric Accuracy Check")
-#numAccuracySelect = dbutils.widgets.get("NumberCheck")
-#AccuracySelectList = numAccuracySelect.split(",")
-
-# COMMAND ----------
-
-#dbutils.widgets.text("MaxValue","Max")
-#MaxValue=dbutils.widgets.get("MaxValue")
-#MaxValue
-
-# COMMAND ----------
-
-dataFrameStripped.schema
-
-# COMMAND ----------
-
 emptyRDD = spark.sparkContext.emptyRDD()
 schema = dataFrameStripped.schema
 dfEmpty=spark.createDataFrame(emptyRDD,schema)
@@ -254,14 +194,17 @@ def accuracyCheck(MaxValue):
 
 MaxValue= 100
 AccuracyCheck = accuracyCheck(MaxValue)
-AccuracyCheck.show()
+AccuracyCheck.show(5)
 
 # COMMAND ----------
 
 # DBTITLE 1,Getting data without errors(currently Nulls, Blanks, Validity and Duplicates)
 def cleanData(dataFrameStripped):
     try:
-        cleanDF= dataFrameStripped.subtract(NullsCheck.union(AccuracyCheck.union(numValidityCheck))).distinct()
+        #cleanDF= dataFrameStripped.subtract(NullsCheck.union(AccuracyCheck.union(numValidityCheck))).distinct()
+        nullChecked = dataFrameStripped.subtract(NullsCheck).distinct()
+        AccuracyChecked = nullChecked.subtract(AccuracyCheck).distinct()
+        cleanDF = AccuracyChecked.subtract(numValidityCheck).distinct()
         return cleanDF
     except Exception as e:
         print(e)
@@ -271,17 +214,12 @@ def cleanData(dataFrameStripped):
 # COMMAND ----------
 
 CleanData = cleanData(dataFrameStripped)
-
-# COMMAND ----------
-
-CleanData.show()
+CleanData.show(5)
 
 # COMMAND ----------
 
 day=str(date.today())
 print(day)
-
-# COMMAND ----------
 
 fileNameInter = fileName.split(".")
 fileNameF = fileNameInter[0]
@@ -314,6 +252,32 @@ def ErrorStats():
 # COMMAND ----------
 
 ErrorStats= ErrorStats()
+
+# COMMAND ----------
+
+def ErrorGraph():
+    try:
+        ErrorStats.select("TypeofError","Error count").groupBy("TypeofError").sum("Error count").show()
+        ErrorStats.select("TableName","ActualCount","Error count","cleandata count").groupBy("TableName").sum("ActualCount","Error count","cleandata count").show()
+
+        df = ErrorStats.select("TypeofError","Error count").groupBy("TypeofError").sum("Error count").toPandas()
+        df.plot(kind = 'bar',
+                x = 'TypeofError',
+                y = 'sum(Error count)',
+                color = 'green')
+
+        plt.title('Bar Chart for the number of Types of Error Encountered')
+        plt.xlabel('Type of Error')
+        plt.ylabel('Total Error Count')
+        plt.show()
+
+        df = ErrorStats.select("TableName","ActualCount","Error count","cleandata count").groupBy("TableName").sum("ActualCount","Error count","cleandata count").toPandas()
+        df.plot(kind = 'bar')
+        plt.xlabel('Different type of error')
+        plt.ylabel('Total Data Count')
+        plt.show()
+    except Exception as e:
+        ErrorLog(str(e))
 
 # COMMAND ----------
 
@@ -352,32 +316,30 @@ def writeErrorStats():
 # COMMAND ----------
 
 writeNullsCheck()
-
-
-
-# COMMAND ----------
-
 writeDuplicateCheck()
-
-# COMMAND ----------
-
 writeNumValidityCheck()
-
-# COMMAND ----------
-
 writeAccuracyCheck()
-
-# COMMAND ----------
-
 writeCleanData()
-
-# COMMAND ----------
-
 writeErrorStats()
 
-# COMMAND ----------
-
-
 
 # COMMAND ----------
 
+ErrorGraph()
+
+# COMMAND ----------
+
+def fuzzycheck(df,colname,consistantlist):
+    """
+    df is the dataframe in which the fuzzy check is implemented.
+    colname is the column in which fuzzy check is done.
+    consintantlist should have the correct data.
+    """
+    collist=[x[colname] for x in df.collect()]
+    collist=set(collist)
+    for i in collist:
+        j=process.extractOne(i,consistantlist,score_cutoff=80)
+        if j!=None:
+            if j[1]!=100:
+                df=df.replace(i,j)
+    return df
