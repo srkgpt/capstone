@@ -1,4 +1,9 @@
 # Databricks notebook source
+import pyspark.sql.functions as f
+from pyspark.sql.functions import when
+
+# COMMAND ----------
+
 dbutils.widgets.removeAll()
 dbutils.widgets.text("storage","capstonebatch1")
 dbutils.widgets.text("container","capstone")
@@ -20,17 +25,16 @@ secret = dbutils.secrets.get(scope="secret", key="secret")
 
 # COMMAND ----------
 
-
 spark.conf.set("fs.azure.account.auth.type", "OAuth")
 spark.conf.set("fs.azure.account.oauth.provider.type", "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider")
 spark.conf.set("fs.azure.account.oauth2.client.id."+storage+".dfs.core.windows.net", clientid)
 spark.conf.set("fs.azure.account.oauth2.client.secret."+storage+".dfs.core.windows.net", secret)
 spark.conf.set("fs.azure.account.oauth2.client.endpoint."+storage+".dfs.core.windows.net", "https://login.microsoftonline.com/"+tenantid+"/oauth2/token")
 
-
 # COMMAND ----------
 
  df = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/covid19Vaccination.csv")
+  
 
 # COMMAND ----------
 
@@ -38,63 +42,15 @@ df.show()
 
 # COMMAND ----------
 
-df.printSchema()
+dfdecimalcheck=df.withColumn("Population",f.floor("POPULATION"))
 
 # COMMAND ----------
 
-from pyspark.sql import functions as f
-#df2 = df.withColumn("badRecord", f.when(f.to_date(f.col("DATE"),"dd-MM-yyyy HH:mm").isNotNull, False).otherwise(True))
-df2=df.withColumn("badRecord",f.to_date(f.col("DATE"), "dd-MM-yyyy HH:mm"))
-df2=df2.where(df2.badRecord.isNull())
-
-
+dfdecimalcheck.show()
 
 # COMMAND ----------
 
-df2.show()
-
-# COMMAND ----------
-
-#df3=df2.select(f.date_format(f.col("DATE"),"dd:MM:yyyy HH:mm").alias("new"))
-#df3=df2.select(f.col("DATE"),f.when(f.to_date(f.col("DATE"),"dd-MM-yyyy HH:mm").isNull,f.date_format(f.col("DATE"),"dd-MM-yyyy HH:mm")).otherwise("unknown")).alias("new")
-
-
-# COMMAND ----------
-
-#df2.select(f.date_format('DATE','yyyy-MM-dd HH:mm').alias('new_dt')).show()
-
-# COMMAND ----------
-
-df3.show()
-
-# COMMAND ----------
-
-
-df2.select(f.date_format('DATE', 'MM/dd/yyy').alias('date')).collect()
-
-# COMMAND ----------
-
-df4 = spark.createDataFrame([('12-04-2021',)], ['a'])
-df4.select(f.date_format('a', 'dd/MM/yyyy').alias('date')).collect()
-
-# COMMAND ----------
-
-output_format = 'dd/MM/yyyy'
-df5=df4.select(f.date_format(
-    f.unix_timestamp("a", "MM-dd-yyyy").cast("timestamp"), 
-    output_format
-))
-
-# COMMAND ----------
-
-df5.show()
-
-# COMMAND ----------
-
-df.select(f.round("POPULATION")).show()
-
-# COMMAND ----------
-
+# DBTITLE 1,Datecheck
 dftemp = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/covid19Vaccination.csv")
 
 # COMMAND ----------
@@ -127,3 +83,138 @@ dftemp.show()
 
 # COMMAND ----------
 
+df1=spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/medals1.csv")
+
+# COMMAND ----------
+
+pip install word2number
+
+# COMMAND ----------
+
+# DBTITLE 1,Consistency check(numeric word to number)
+from word2number import w2n
+from functools import reduce
+
+# COMMAND ----------
+
+df1.show()
+
+# COMMAND ----------
+
+dfnull=df1.where(reduce(lambda x, y: x | y, (f.col(x).isNull() | (f.col(x)=="null") for x in df1.columns)))
+df2=df1.subtract(dfnull)
+df2=df2.toPandas()
+df2.head(50)
+
+# COMMAND ----------
+
+
+columnlist=list(df2)
+for i in columnlist:
+    try:
+        df2[i] = df2[i].apply(w2n.word_to_num)
+    except Exception as e:
+        print(e)
+df2.head(50)
+
+# COMMAND ----------
+
+#df1.withColumn("Gold",when(f.col("Gold").cast("int").isNull ,w2n.word_to_num(f.col("Gold"))).otherwise(f.col("Gold")))
+#dfnum=df1.withColumn("num",reduce(lambda x, y: x | y, (f.col(x).cast("int").isNull() for x in df1.columns)))
+import pyspark.sql.functions as f
+cols=["name","age","Rank"]
+vals=[("A","6","1"),("B","seven","two"),("C","8","6"),("D","five","4"),("E","1","six")]
+dfdum = spark.createDataFrame(vals, cols)
+#dfdum.show()
+#dfdum.withColumn("age", when(f.col("age"),w2n.word_to_num(f.col("age"))).otherwise()
+dfdumpandas=dfdum.toPandas()
+#dfdumpandas['age']=dfdumpandas['age'].fillna('zero')
+#dfdumpandas
+collist=["age","Rank"]
+for i in collist:
+    dfdumpandas[i] = dfdumpandas[i].apply(w2n.word_to_num)  
+dfdumpandas
+        
+
+# COMMAND ----------
+
+# DBTITLE 1,Email Check
+dfcontacts = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/100-contacts.csv")
+
+# COMMAND ----------
+
+dfcontacts.show(truncate=False)
+
+# COMMAND ----------
+
+email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+# COMMAND ----------
+
+dfemailvalidity=dfcontacts.withColumn("validity",when(f.col("email").rlike(email_pattern),"valid").otherwise("invalid"))
+
+# COMMAND ----------
+
+dfemailvalidity.show()
+
+# COMMAND ----------
+
+dfinvalidemails= dfemailvalidity.filter(f.col("validity")=="invalid")
+
+# COMMAND ----------
+
+dfinvalidemails.show(truncate=False)
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+# DBTITLE 1,StringLength Check
+dfcontacts.where((f.length(f.col("address")) <5) | (f.length(f.col("address"))>30)).show(truncate=False)
+
+# COMMAND ----------
+
+# DBTITLE 1,Ecryption of Sensitive Data
+import base64
+dfPassData = spark.read.format("csv").option("header","true").load("abfss://"+container+"@"+storage+".dfs.core.windows.net/passwordData.csv")
+dfPassDataPD = dfPassData.toPandas()
+dfPassDataPD
+
+# COMMAND ----------
+
+for index, row in dfPassDataPD.iterrows():
+    row['password'] = base64.b64encode(row['password'].encode("utf-8"))
+  
+
+# COMMAND ----------
+
+dfPassDataPD
+
+# COMMAND ----------
+
+for index, row in dfPassDataPD.iterrows():
+    row['password'] = base64.b64decode(row['password'])
+
+# COMMAND ----------
+
+dfPassDataPD #Decoded Data
+
+# COMMAND ----------
+
+# DBTITLE 1,Fuzzy Check
+def fuzzycheck(df,colname,consistantlist):
+    """
+    df is the dataframe in which the fuzzy check is implemented.
+    colname is the column in which fuzzy check is done.
+    consintantlist should have the correct data.
+    """
+    collist=[x[colname] for x in df.collect()]
+    collist=set(collist)
+    for i in collist:
+        j=process.extractOne(i,consistantlist,score_cutoff=80)
+        if j!=None:
+            if j[1]!=100:
+                df=df.replace(i,j)
+    return df
